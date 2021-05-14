@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormControl } from '@angular/forms';
 import { Observable, EMPTY, combineLatest, Subscription } from 'rxjs';
@@ -7,6 +7,7 @@ import { tap, catchError, startWith, count, flatMap, map, debounceTime, filter }
 import { Product } from '../product.interface';
 import { ProductService } from '../product.service';
 import { FavouriteService } from '../favourite.service';
+
 
 @Component({
   selector: 'app-product-list',
@@ -18,14 +19,23 @@ export class ProductListComponent implements OnInit {
   title: string = 'Products';
   selectedProduct: Product;
   products$: Observable<Product[]>;
+  productsNumber$: Observable<number>;
   mostExpensiveProduct$: Observable<Product>;
   errorMessage;
 
   // Pagination
-  pageSize = 5;
+  productsToLoad: number = this.productService.productsToLoad;
+  pageSize = this.productsToLoad / 2;
   start = 0;
   end = this.pageSize;
   currentPage = 1;
+
+  loadMore(): void {
+    let skip = this.end;
+    let take = this.productsToLoad;
+
+    this.productService.initProducts(skip, take);
+  }
 
   previousPage() {
     this.start -= this.pageSize;
@@ -64,6 +74,13 @@ export class ProductListComponent implements OnInit {
                       .productService
                       .products$;
 
+    this.productsNumber$ = this
+                            .products$
+                            .pipe(
+                              map(products => products.length),
+                              startWith(0)
+                            );
+
     this.mostExpensiveProduct$ = this
                                     .productService
                                     .mostExpensiveProduct$;
@@ -71,6 +88,7 @@ export class ProductListComponent implements OnInit {
 
   refresh() {
     this.productService.initProducts();
+    this.productService.initMostExpensiveProduct();
     this.router.navigateByUrl('/products'); // Self route navigation
   }
 }
